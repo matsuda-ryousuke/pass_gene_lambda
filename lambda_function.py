@@ -179,6 +179,9 @@ def lambda_handler(event, context):
         # パスワードを削除する場合
         # ========================
         elif OperationType == 'DELETE':
+
+            # DynamoDBから取得したユーザー情報
+            user_source = search_user(PartitionKey)
             
             # 同名サービスが登録されているか確認
             check_service = search_password(PartitionKey, SortKey)
@@ -191,13 +194,27 @@ def lambda_handler(event, context):
                 return json.dumps(returnValue, ensure_ascii=False)
             # 同名が登録済み ＝ OK
             else:
-                # パスワード削除処理
-                response = password_delete(PartitionKey, SortKey)
-                returnValue['flag'] = 'deleted'
-                returnValue['mail'] = PartitionKey
-                returnValue['pass'] = event['Keys']['user_pass']
-                returnValue['passwords'] = get_passwords(PartitionKey)
-                return json.dumps(returnValue, ensure_ascii=False)
+                # 送信されたパスワードがあってるかチェック
+                # DynamoDBから取得したユーザーパスワード
+                user_pass = user_source[0]["user_pass"]
+                # フロントから送信されたパスワード
+                entered_pass = hashlib.sha256(event['Keys']['user_pass'].encode('utf-8')).hexdigest()
+
+                # パスワード合致
+                if user_pass == entered_pass:
+                    response = password_delete(PartitionKey, SortKey)
+                    returnValue['flag'] = 'deleted'
+                    returnValue['mail'] = PartitionKey
+                    returnValue['pass'] = event['Keys']['user_pass']
+                    returnValue['passwords'] = get_passwords(PartitionKey)
+                    return json.dumps(returnValue, ensure_ascii=False)
+                # パスワード合致しない
+                else:
+                    returnValue['flag'] = 'deletemiss'
+                    returnValue['mail'] = PartitionKey
+                    returnValue['pass'] = event['Keys']['user_pass']
+                    
+                    return json.dumps(returnValue, ensure_ascii=False)
                 
         # ========================
         # ログイン時の処理
