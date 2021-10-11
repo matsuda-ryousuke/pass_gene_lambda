@@ -1,3 +1,4 @@
+
 import json
 import boto3
 import hashlib
@@ -13,7 +14,7 @@ returnValue = {}
 # ユーザー検索関数
 def search_user(partitionKey):
     queryData = table.query(
-        KeyConditionExpression = Key("partition").eq(partitionKey) & Key("sort").eq(partitionKey)
+        IndexName='attribute-index', KeyConditionExpression = Key("partition").eq(partitionKey) & Key("attribute").eq("user")
     )
     items=queryData['Items']
     if not items:
@@ -53,7 +54,8 @@ def user_put(partitionKey, sortKey, user_pass):
         Item={
             'partition': partitionKey,
             'sort': sortKey,
-            'user_pass': user_pass
+            'user_pass': user_pass,
+            'attribute': 'user'
         }
     )
     if putResponse['ResponseMetadata']['HTTPStatusCode'] != 200:
